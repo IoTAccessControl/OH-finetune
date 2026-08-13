@@ -1,6 +1,6 @@
 # 鸿蒙应用代码隐私合规审计 — Qwen LoRA SFT
 
-基于导师提供的两阶段隐私数据（`privacy_two_stage_*`），用 LoRA 监督微调（SFT）让 Qwen 系列模型
+基于提供的两阶段隐私数据（`privacy_two_stage_*`），用 LoRA 监督微调（SFT）让 Qwen 系列模型
 学会输出结构化、可审计的代码隐私合规报告（`collectionAndUse` / `permissions` JSON 字段）。
 
 ## 结果速览（无泄漏测试集，200 条）
