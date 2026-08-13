@@ -74,7 +74,7 @@ cd scripts
 训练完成后 `trainer.save_model(OUTPUT_DIR)` 产出 LoRA adapter。如有托管需求可上传至
 ModelScope / HuggingFace 并在 README 补充链接。
 
-## 数据纪律（导师要求）
+## 数据纪律
 
 - **测试集严格隔离**：`data/privacy_two_stage_test.json` 仅用于评测，禁止并入训练；
 - **禁止数据污染**：后续任何增广数据须先与测试集去重，不得生成与测试集高度雷同的样本；
