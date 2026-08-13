@@ -1,0 +1,32 @@
+{
+  "adapter": {
+    "json_align": 0.995,
+    "has_collectionUse": 0.995,
+    "has_permissions": 0.945,
+    "key_coverage": 0.97,
+    "avg_cu_items": 1.79,
+    "avg_perm_items": 1.835,
+    "avg_length": 814.38,
+    "n": 200,
+    "fail_type_counts": {
+      "ok": 199,
+      "free_text": 1
+    }
+  },
+  "base": {
+    "json_align": 0.855,
+    "has_collectionUse": 0.0,
+    "has_permissions": 0.02,
+    "key_coverage": 0.01,
+    "avg_cu_items": 0.0,
+    "avg_perm_items": 0.035,
+    "avg_length": 1190.69,
+    "n": 200,
+    "fail_type_counts": {
+      "json_other": 167,
+      "long_degenerate": 17,
+      "free_text": 12,
+      "field_drift": 4
+    }
+  }
+}
