@@ -1,5 +1,5 @@
 """
-Qwen3-32B LoRA SFT 重跑脚本（基于 train_sft.py，导师标准版 + 两处修正）。
+Qwen3-32B LoRA SFT 重跑脚本（基于 train_sft.py，标准版 + 两处修正）。
 
 ★ 相对 train_sft.py 的关键修正（目的：与 7B 链路做公平 head-to-head）：
   1. 加 remap_output()，把训练数据里的 dataPractices/permissionPractices
@@ -9,8 +9,8 @@ Qwen3-32B LoRA SFT 重跑脚本（基于 train_sft.py，导师标准版 + 两处
 其余超参（r=32/alpha=64/lr=5e-5/系统提示/数据）与 train_sft.py 完全一致，
 保证只改"字段对齐"与"训练充分度"两个变量。
 
-输出到 ./output_twostage_32b_rerun（不覆盖原 output_twostage_v2）。
-启动: python train_sft_32b_rerun.py
+输出到 <仓库根>/output_twostage_32b_rerun（LoRA adapter 目录）。
+启动: BASE_MODEL=/path/to/Qwen3-32B python train_sft_32b_rerun.py
 """
 
 # ★ 32B-4bit 单卡(24GB)放不下，需 device_map="auto" 跨多张空闲卡分片
@@ -35,14 +35,22 @@ from trl import SFTConfig, SFTTrainer
 # 仓库根目录（scripts/ 的上一级），其余路径基于此推导，clone 后可直接运行
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# 基座模型：clone 后请改为本地 Qwen3-32B 路径（或设环境变量 BASE_MODEL）
-MODEL_PATH  = os.environ.get(
-    "BASE_MODEL",
-    os.path.join(REPO_ROOT, "..", "models", "Qwen", "Qwen3-32B"),
-)
-TRAIN_FILE  = os.path.join(REPO_ROOT, "data", "privacy_two_stage_train.json")
-VAL_FILE    = os.path.join(REPO_ROOT, "data", "privacy_two_stage_valid.json")
-OUTPUT_DIR  = "./output_twostage_32b_rerun"
+# 基座模型：必须通过环境变量 BASE_MODEL 显式指定本地路径，例如：
+#   export BASE_MODEL=/path/to/Qwen3-32B
+# 未设置则给出清晰提示并退出，避免静默使用不存在的默认路径。
+if "BASE_MODEL" not in os.environ:
+    raise SystemExit(
+        "错误：请先设置环境变量 BASE_MODEL 指向本地基座模型路径，例如：\n"
+        "  export BASE_MODEL=/path/to/Qwen3-32B\n"
+        "或运行：BASE_MODEL=/path/to/Qwen3-32B python train_sft_32b_rerun.py"
+    )
+MODEL_PATH  = os.environ["BASE_MODEL"]
+# 数据统一放在仓库根下的 data/two_stage_llamafactory/（与本目录同级），避免重复存储
+DATA_DIR    = os.path.join(REPO_ROOT, "..", "data", "two_stage_llamafactory")
+TRAIN_FILE  = os.path.join(DATA_DIR, "privacy_two_stage_train.json")
+VAL_FILE    = os.path.join(DATA_DIR, "privacy_two_stage_valid.json")
+# adapter 输出到仓库根下的固定目录，基于脚本位置推导，不依赖当前工作目录
+OUTPUT_DIR  = os.path.join(REPO_ROOT, "output_twostage_32b_rerun")
 
 SYSTEM_PROMPT = (
     "你是一名专业的代码安全与隐私合规审计专家。"

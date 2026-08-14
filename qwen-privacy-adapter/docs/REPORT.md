@@ -19,7 +19,7 @@
 
 ## 2. 实验设置
 
-- **训练数据**：`data/two_stage_llamafactory/` 下的两阶段隐私数据，`train/valid/test = 2000/200/200`，LLaMA-Factory 格式，字段为 `instruction` / `input` / `output`，`output` 为 `collectionAndUse` / `permissions` 合规 JSON。测试集与训练/验证集不相交，无泄漏。
+- **训练数据**：仓库根 `data/two_stage_llamafactory/` 下的两阶段隐私数据，`train/valid/test = 1600/200/200`，LLaMA-Factory 格式，字段为 `instruction` / `input` / `output`，`output` 为 `collectionAndUse` / `permissions` 合规 JSON。测试集与训练/验证集不相交，无泄漏。
 - **模型**：`Qwen3-32B` + LoRA、`Qwen2.5-7B-Instruct` + LoRA。
 - **训练**：跑满 3 epoch，输出约定字段已与训练数据对齐。
 - **评测**：对「微调后 adapter」和「原始 base（`disable_adapter()`）」用同一 200 条测试集、同一 prompt 串行各跑一遍，固定判据自动打分，无人工、无第二个模型介入。

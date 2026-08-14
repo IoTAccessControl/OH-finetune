@@ -1,10 +1,10 @@
 # 数据划分与无污染校验（DATA_SPLIT）
 
-本文档落实：**区分测试集/训练集，且不可出现数据污染（训练集与测试集高度雷同）**。
+本文档说明数据划分原则：**区分测试集/训练集，且不可出现数据污染（训练集与测试集高度雷同）**。
 
 ## 1. 划分来源
 
-数据来自提供的两阶段隐私数据（LLaMA-Factory 格式 `instruction` / `input` / `output`）：
+数据采用两阶段隐私数据（LLaMA-Factory 格式 `instruction` / `input` / `output`）：
 
 | 文件 | 用途 | 条数 |
 |------|------|-----:|
@@ -21,15 +21,15 @@
 运行（在仓库根目录）：
 
 ```bash
-/mnt/data2/conda/envs/ar_env_py310/bin/python - <<'PY'
-import json
+python - <<'PY'
+import json, os
 def load(p):
     with open(p, encoding="utf-8") as f:
         c = f.read().strip()
     return json.loads(c) if c.startswith("[") else [json.loads(l) for l in c.splitlines() if l.strip()]
 def key(d):
     return (d.get("instruction") or "").strip() + "\n\n" + (d.get("input") or "").strip()
-b = "data/"
+b = os.path.join("data", "two_stage_llamafactory") + os.sep
 tr, va, te = load(b+"privacy_two_stage_train.json"), load(b+"privacy_two_stage_valid.json"), load(b+"privacy_two_stage_test.json")
 kt, kv, kte = {key(d) for d in tr}, {key(d) for d in va}, {key(d) for d in te}
 print("train∩valid:", len(kt & kv))

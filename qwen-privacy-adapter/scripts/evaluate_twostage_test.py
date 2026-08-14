@@ -2,10 +2,10 @@
 evaluate_twostage_test.py —— 测试集正式评测 + 失败样本归因（P1 + P2 合一）。
 
 ★ 背景：
-  导师提供的两阶段数据（privacy_two_stage_train/valid/test.json，LLaMA-Factory 格式，
+  两阶段隐私数据（privacy_two_stage_train/valid/test.json，LLaMA-Factory 格式，
   instruction 要求"严格按指定 JSON 格式输出"，output 为
   {"collectionAndUse":[...], "permissions":[...]}）。
-  模型 output_twostage_v2 已用 train(1600)+valid(200) 微调完成。
+  模型经 train(1600)+valid(200) 微调完成后，用本脚本在 200 条测试集上评测。
 
 ★ 本脚本做的事：
   1. 在 200 条测试集（privacy_two_stage_test.json）上评测 adapter 与 base 对照；
@@ -16,12 +16,10 @@ evaluate_twostage_test.py —— 测试集正式评测 + 失败样本归因（P1
 ★ 判据对齐训练数据格式（collectionAndUse JSON），非 Markdown。
 
 用法（在仓库 scripts/ 目录下）：
-  CUDA_VISIBLE_DEVICES=1,2,3,4,6 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \\
-  nohup /mnt/data2/conda/envs/ar_env_py310/bin/python \\
-      evaluate_twostage_test.py \\
-      --adapter ./output_twostage_32b_rerun \\
-      --eval_file ../data/privacy_two_stage_test.json \\
-      --max_new_tokens 2048 > logs_eval_twostage_test.log 2>&1 &
+  CUDA_VISIBLE_DEVICES=0 python evaluate_twostage_test.py \\
+      --adapter ../output_twostage_32b_rerun \\
+      --eval_file ../data/two_stage_llamafactory/privacy_two_stage_test.json \\
+      --max_new_tokens 2048
 """
 import argparse
 import json
@@ -38,12 +36,19 @@ from peft import PeftModel
 # 仓库根目录（scripts/ 的上一级）
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# 基座模型：clone 后请改为本地 Qwen3-32B 路径（或设环境变量 BASE_MODEL）
-BASE_MODEL = os.environ.get(
-    "BASE_MODEL",
-    os.path.join(REPO_ROOT, "..", "models", "Qwen", "Qwen3-32B"),
-)
-EVAL_FILE_DEFAULT = os.path.join(REPO_ROOT, "data", "privacy_two_stage_test.json")
+# 基座模型：必须通过环境变量 BASE_MODEL 显式指定本地路径，例如：
+#   export BASE_MODEL=/path/to/Qwen3-32B
+# 未设置则给出清晰提示并退出，避免静默使用不存在的默认路径。
+if "BASE_MODEL" not in os.environ:
+    raise SystemExit(
+        "错误：请先设置环境变量 BASE_MODEL 指向本地基座模型路径，例如：\n"
+        "  export BASE_MODEL=/path/to/Qwen3-32B\n"
+        "或运行：BASE_MODEL=/path/to/Qwen3-32B python evaluate_twostage_test.py --adapter <path>"
+    )
+BASE_MODEL = os.environ["BASE_MODEL"]
+# 数据统一放在仓库根下的 data/two_stage_llamafactory/（与本目录同级），避免重复存储
+DATA_DIR = os.path.join(REPO_ROOT, "..", "data", "two_stage_llamafactory")
+EVAL_FILE_DEFAULT = os.path.join(DATA_DIR, "privacy_two_stage_test.json")
 
 SYSTEM_PROMPT = (
     "你是一名专业的代码安全与隐私合规审计专家。"
@@ -195,10 +200,18 @@ def eval_model(model, tokenizer, samples, tag, max_new_tokens, use_adapter: bool
 
 def main():
     ap = argparse.ArgumentParser()
+    # adapter 与测试集路径均基于脚本所在位置推导（scripts/ 的上一级），
+    # 无论从哪个工作目录运行都能正确定位，无需用户手动拼相对路径。
+    adapter_default = os.path.join(REPO_ROOT, "output_twostage_32b_rerun")
     ap.add_argument("--adapter",
-                    default="/mnt/data2/project/qwen微调 - 副本/qwen微调/output_twostage_v2")
-    ap.add_argument("--eval_file", default=EVAL_FILE_DEFAULT)
-    ap.add_argument("--max_new_tokens", type=int, default=2048)
+                    default=adapter_default,
+                    help="LoRA adapter 目录路径（训练产物）。"
+                         "默认: <仓库根>/output_twostage_32b_rerun")
+    ap.add_argument("--eval_file", default=EVAL_FILE_DEFAULT,
+                    help="测试集 JSON 路径。"
+                         "默认: <仓库根>/data/two_stage_llamafactory/privacy_two_stage_test.json")
+    ap.add_argument("--max_new_tokens", type=int, default=2048,
+                    help="生成最大 token 数（默认 2048）")
     args = ap.parse_args()
 
     tokenizer = AutoTokenizer.from_pretrained(

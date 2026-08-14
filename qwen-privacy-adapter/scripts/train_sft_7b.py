@@ -1,16 +1,16 @@
 """
-Qwen2.5-7B-Instruct LoRA SFT 训练脚本（7B 专用，基于 train_sft.py 改）
-复用路径三两阶段数据（privacy_two_stage_train/valid.json）。
+Qwen2.5-7B-Instruct LoRA SFT 训练脚本（7B 专用）。
+读取 data/two_stage_llamafactory/ 下的两阶段隐私数据（privacy_two_stage_train/valid.json）进行训练。
 
-★ 相比 32B 版本的关键改动：
-  1. BASE_MODEL 指向本地 Qwen2.5-7B-Instruct；
-  2. 去掉 enable_thinking（Qwen2.5 chat template 不支持该参数，会被静默忽略）；
+★ 与 32B 版本（train_sft_32b_rerun.py）的主要差异：
+  1. 基座模型为 Qwen2.5-7B-Instruct（通过环境变量 BASE_MODEL 指定）；
+  2. 不使用 enable_thinking（Qwen2.5 的 chat template 不支持该参数，会被静默忽略）；
   3. 训练 output 字段做映射 dataPractices->collectionAndUse / permissionPractices->permissions，
-     使训练目标字段与评测判据（evaluate_twostage_test.py 认 collectionAndUse/permissions）一致。
+     使训练目标字段与评测判据（evaluate_twostage_test*.py 认 collectionAndUse/permissions）一致。
      数据文件本身不改动；
-  4. 去掉 max_steps 截断，跑满 NUM_EPOCHS（7B 小，1600 条 3 epoch 很快）。
+  4. 跑满 NUM_EPOCHS（7B 规模小，1600 条 3 epoch 很快）。
 
-启动: python train_sft_7b.py
+启动: BASE_MODEL=/path/to/Qwen2.5-7B-Instruct python train_sft_7b.py
 """
 
 import os
@@ -33,14 +33,22 @@ from trl import SFTConfig, SFTTrainer
 # 仓库根目录（scripts/ 的上一级），其余路径基于此推导，clone 后可直接运行
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# 基座模型：clone 后请改为本地 Qwen2.5-7B-Instruct 路径（或设环境变量 BASE_MODEL）
-MODEL_PATH  = os.environ.get(
-    "BASE_MODEL",
-    os.path.join(REPO_ROOT, "..", "qwen2.5-7b-instruct"),
-)
-TRAIN_FILE  = os.path.join(REPO_ROOT, "data", "privacy_two_stage_train.json")
-VAL_FILE    = os.path.join(REPO_ROOT, "data", "privacy_two_stage_valid.json")
-OUTPUT_DIR  = "./output_twostage_7b"
+# 基座模型：必须通过环境变量 BASE_MODEL 显式指定本地路径，例如：
+#   export BASE_MODEL=/path/to/Qwen2.5-7B-Instruct
+# 未设置则给出清晰提示并退出，避免静默使用不存在的默认路径。
+if "BASE_MODEL" not in os.environ:
+    raise SystemExit(
+        "错误：请先设置环境变量 BASE_MODEL 指向本地基座模型路径，例如：\n"
+        "  export BASE_MODEL=/path/to/Qwen2.5-7B-Instruct\n"
+        "或运行：BASE_MODEL=/path/to/Qwen2.5-7B-Instruct python train_sft_7b.py"
+    )
+MODEL_PATH  = os.environ["BASE_MODEL"]
+# 数据统一放在仓库根下的 data/two_stage_llamafactory/（与本目录同级），避免重复存储
+DATA_DIR    = os.path.join(REPO_ROOT, "..", "data", "two_stage_llamafactory")
+TRAIN_FILE  = os.path.join(DATA_DIR, "privacy_two_stage_train.json")
+VAL_FILE    = os.path.join(DATA_DIR, "privacy_two_stage_valid.json")
+# adapter 输出到仓库根下的固定目录，基于脚本位置推导，不依赖当前工作目录
+OUTPUT_DIR  = os.path.join(REPO_ROOT, "output_twostage_7b")
 
 SYSTEM_PROMPT = (
     "你是一名专业的代码安全与隐私合规审计专家。"
